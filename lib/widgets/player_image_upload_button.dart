@@ -27,15 +27,81 @@ class _PlayerImageUploadButtonState
     extends ConsumerState<PlayerImageUploadButton> {
   bool _busy = false;
 
-  Future<void> _pick() async {
+  Future<void> _choose() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: kSurface,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (id, icon, label) in const [
+              ('gallery', Icons.photo_library, 'GALERIA'),
+              ('camera', Icons.photo_camera, 'CAMARA'),
+              ('url', Icons.link, 'URL DE IMAGEN'),
+            ])
+              ListTile(
+                leading: Icon(icon, color: kAccentBlue),
+                title: Text(label, style: const TextStyle(fontFamily: kFontUI)),
+                onTap: () => Navigator.pop(ctx, id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == 'url') return _pickUrl();
+    if (choice != null) return _pick(choice == 'camera');
+  }
+
+  Future<void> _pickUrl() async {
+    final ctrl = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kSurface,
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(hintText: 'https://...'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text),
+            child: const Text('GUARDAR'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (url == null || url.trim().isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(playerImageServiceProvider).setUrl(widget.player.id, url);
+      ref.invalidate(playerImagesProvider);
+      _toast('Foto actualizada');
+    } on FormatException {
+      _toast('URL no valida (usa http/https)');
+    } catch (e) {
+      _toast('Error al guardar la foto');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pick(bool camera) async {
     final XFile? picked;
     try {
       picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
+        source: camera ? ImageSource.camera : ImageSource.gallery,
         imageQuality: 90,
       );
     } catch (e) {
-      _toast('No se pudo abrir la galería');
+      _toast('No se pudo abrir la galería/cámara');
       return;
     }
     if (picked == null) return;
@@ -69,7 +135,7 @@ class _PlayerImageUploadButtonState
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _busy ? null : _pick,
+      onTap: _busy ? null : _choose,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(

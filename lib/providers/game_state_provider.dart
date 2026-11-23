@@ -11,7 +11,7 @@ import 'github_provider.dart';
 // user_provider.dart created a divergent cache, so screen-level clearCache()
 // calls invalidated the wrong cache and left ownership data stale.
 export 'github_provider.dart'
-    show githubServiceProvider, GithubService, GithubFile;
+    show githubServiceProvider, GithubService, GithubFile, DataStore;
 
 final playersProvider = FutureProvider<List<Player>>((ref) async {
   final gh = ref.read(githubServiceProvider);

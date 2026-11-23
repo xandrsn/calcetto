@@ -3,29 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../demo/demo_backend.dart';
+import 'data_store.dart';
 
-final githubServiceProvider = Provider<GithubService>(
+export 'data_store.dart';
+
+/// The active [DataStore]: demo (in-memory), local-first (overridden in main
+/// when no token is configured) or GitHub. Name kept for existing callers.
+final githubServiceProvider = Provider<DataStore>(
   (ref) => kDemoMode ? GithubService(demoHttpClient()) : GithubService(),
 );
 
-class GithubFile {
-  final dynamic data;
-  final String sha;
-
-  const GithubFile(this.data, this.sha);
-}
-
-/// Thrown when a conditional write is rejected because the file's sha changed
-/// since we read it (optimistic-concurrency conflict). [mutateJson] catches and
-/// retries this; if retries are exhausted it surfaces to the caller.
-class WriteConflictException implements Exception {
-  final String path;
-  const WriteConflictException(this.path);
-  @override
-  String toString() => 'WriteConflictException: concurrent write on $path';
-}
-
-class GithubService {
+class GithubService extends DataStore {
   static const _headers = {
     'Authorization': 'Bearer $kGithubToken',
     'Accept': 'application/vnd.github.v3+json',
@@ -40,6 +28,7 @@ class GithubService {
 
   GithubService([http.Client? client]) : _client = client ?? http.Client();
 
+  @override
   Future<GithubFile?> getJson(String path, {bool useCache = true}) async {
     if (useCache && _cache.containsKey(path)) return _cache[path];
     final url = Uri.parse('$kGithubBaseUrl$path');
@@ -59,6 +48,7 @@ class GithubService {
     return file;
   }
 
+  @override
   Future<String?> getRawText(String path) async {
     final url = Uri.parse('$kGithubBaseUrl$path');
     final res = await _client.get(url, headers: _headers);
@@ -72,6 +62,7 @@ class GithubService {
     );
   }
 
+  @override
   Future<List<dynamic>?> listDir(String path) async {
     final url = Uri.parse('$kGithubBaseUrl$path');
     final res = await _client.get(url, headers: _headers);
@@ -82,6 +73,7 @@ class GithubService {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
+  @override
   Future<void> putJson(
     String path,
     dynamic content,
@@ -104,6 +96,7 @@ class GithubService {
     _cache.remove(path);
   }
 
+  @override
   Future<void> createJson(String path, dynamic content, String message) async {
     final url = Uri.parse('$kGithubBaseUrl$path');
     final jsonStr = jsonEncode(content);
@@ -122,45 +115,9 @@ class GithubService {
     _cache.remove(path);
   }
 
-  /// Conflict-safe read-modify-write: reads the **freshest** JSON at [path]
-  /// (null when absent), applies [transform] to it, and writes the result back
-  /// conditionally on its sha. If the write is rejected because the file changed
-  /// in between ([WriteConflictException]), it re-reads and re-applies, up to
-  /// [maxRetries] with exponential backoff (~150ms, 300, 600, 1200).
-  ///
-  /// [transform] receives the current decoded JSON (or null) and must return the
-  /// new decoded JSON to write. Because it runs against fresh server state on
-  /// every attempt, edits **merge** onto reality instead of clobbering it.
-  /// Returns the value that was written.
-  Future<dynamic> mutateJson(
-    String path, {
-    required dynamic Function(dynamic current) transform,
-    String message = 'app: update',
-    int maxRetries = 4,
-  }) async {
-    for (var attempt = 0; ; attempt++) {
-      final file = await getFreshJson(path);
-      final next = transform(file?.data);
-      try {
-        if (file == null) {
-          await createJson(path, next, message);
-        } else {
-          await putJson(path, next, file.sha, message);
-        }
-        return next;
-      } on WriteConflictException {
-        if (attempt >= maxRetries) rethrow;
-        await Future.delayed(Duration(milliseconds: 150 * (1 << attempt)));
-        // loop: re-read fresh and re-apply the transform.
-      }
-    }
-  }
-
-  Future<GithubFile?> getFreshJson(String path) =>
-      getJson(path, useCache: false);
-
-  /// Returns just the git blob sha of [path] without decoding its content
+/// Returns just the git blob sha of [path] without decoding its content
   /// (works for binary files), or null if it doesn't exist.
+  @override
   Future<String?> getSha(String path) async {
     final res = await _client.get(
       Uri.parse('$kGithubBaseUrl$path'),
@@ -175,6 +132,7 @@ class GithubService {
 
   /// Writes raw binary [bytes] to [path] (create or overwrite). Pass the
   /// existing [sha] to overwrite, or null to create.
+  @override
   Future<void> putFileBytes(
     String path,
     List<int> bytes,
@@ -195,6 +153,7 @@ class GithubService {
   }
 
   /// Deletes a file via the Contents API. [sha] must be the file's current sha.
+  @override
   Future<void> deleteFile(String path, String sha, String message) async {
     final url = Uri.parse('$kGithubBaseUrl$path');
     final body = jsonEncode({'message': message, 'sha': sha});
@@ -209,6 +168,7 @@ class GithubService {
   /// status so the caller can surface success/failure instead of guessing.
   /// [workflowFile] is e.g. 'daily_resolution.yml'. Requires the token to have
   /// the `workflow` scope and the workflow to exist on [ref] of the repo.
+  @override
   Future<int> dispatchWorkflow({
     required String owner,
     required String repo,
@@ -227,6 +187,8 @@ class GithubService {
     return res.statusCode;
   }
 
+  @override
   void clearCache() => _cache.clear();
+  @override
   void clearPath(String path) => _cache.remove(path);
 }

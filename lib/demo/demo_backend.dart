@@ -16,7 +16,7 @@ import '../models/user_data.dart';
 /// 422 on a missing one), so merge/retry logic is exercised too. Reloading the
 /// page resets everything.
 MockClient demoHttpClient({DateTime? now}) {
-  final files = _seedFiles(now ?? DateTime.now()); // path -> base64 content
+  final files = demoSeedFiles(now ?? DateTime.now()); // path -> base64 content
   final shas = <String, String>{};
   var shaCounter = 0;
   String nextSha() => 'demo${++shaCounter}';
@@ -101,7 +101,7 @@ String _b64(Object json) => base64.encode(utf8.encode(jsonEncode(json)));
 
 /// Placeholder data: 20 clubs × 23 generated players, one matchday of fixtures
 /// with a bet, and three bot users with squads so the leaderboard isn't empty.
-Map<String, String> _seedFiles(DateTime now) {
+Map<String, String> demoSeedFiles(DateTime now) {
   final teams = kLaLigaTeams;
   const counts = {'GK': 3, 'DEF': 8, 'MID': 8, 'FWD': 4};
   final players = <Map<String, dynamic>>[];

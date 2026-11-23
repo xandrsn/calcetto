@@ -76,4 +76,46 @@ void main() {
       expect(s.form(), isEmpty);
     });
   });
+
+  group('detailed stats', () {
+    DailyMatch m(String id, String home, String away, String score,
+            List<MatchPlayer> ps) =>
+        DailyMatch(id: id, home: home, away: away, score: score, players: ps);
+    MatchPlayer mp(String id, int g, double pts) =>
+        MatchPlayer(id: id, goals: g, assists: 0, points: pts);
+
+    final mds = [
+      _md(1, [m('1', 'A', 'B', '2-0', [mp('p1', 1, 8), mp('p2', 0, 5)])]),
+      _md(2, [m('2', 'C', 'A', '1-1', [mp('p1', 2, 10), mp('p2', 0, 6)])]),
+      _md(3, [m('3', 'A', 'B', '0-1', [mp('p1', 0, 4), mp('p2', 0, 6)])]),
+    ];
+    final st = playerSeasonStats('p1', mds, team: 'A');
+
+    test('results, win rate, mvps', () {
+      expect([st.wins, st.draws, st.losses], [1, 1, 1]);
+      expect(st.winRate, closeTo(1 / 3, 1e-9));
+      expect(st.mvps, 2);
+      expect(st.bestPoints, 10);
+      expect(st.avgPoints, closeTo(22 / 3, 1e-9));
+    });
+
+    test('streaks', () {
+      expect(st.scoringStreak, 2);
+      expect(st.unbeatenStreak, 2);
+    });
+
+    test('head to head', () {
+      final h = st.headToHead;
+      expect(h.first.opponent, 'B');
+      expect([h.first.played, h.first.wins, h.first.losses], [2, 1, 1]);
+      expect(h.first.goals, 1);
+    });
+
+    test('no team: no results, existing totals unchanged', () {
+      final n = playerSeasonStats('p1', mds);
+      expect(n.wins + n.draws + n.losses, 0);
+      expect(n.winRate, 0);
+      expect(n.goals, 3);
+    });
+  });
 }

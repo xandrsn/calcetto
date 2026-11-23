@@ -13,6 +13,7 @@ import '../../utils/time_utils.dart';
 import '../../widgets/async_states.dart';
 import '../../widgets/calcetto_logo.dart';
 import '../../widgets/leaderboard_widget.dart';
+import '../../widgets/local_backup_button.dart';
 import '../../widgets/pitch_widget.dart';
 import '../../widgets/pixel_button.dart';
 
@@ -74,6 +75,7 @@ class _HomeAppBar extends ConsumerWidget implements PreferredSizeWidget {
       elevation: 0,
       title: const CalcettoLogo.bar(wordSize: 15),
       actions: [
+        const LocalBackupButton(),
         if (isAdminUser(username))
           IconButton(
             tooltip: 'Admin',

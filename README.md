@@ -13,7 +13,11 @@ Portfolio: https://charlieandersen.vercel.app
 - Per-player season stats built from the matchdays the app stores.
 - Power-up card collection with its own effects.
 - Local notifications for phase changes (Android).
-- Player photos from free-licence sources (Wikidata / Wikimedia Commons).
+- Player photos from free-licence sources (Wikidata / Wikimedia Commons), or your
+  own: pick from gallery or camera, or paste an image URL. A broken URL falls back
+  to an initials avatar.
+- Per-player season stats: record (W/D/L, win rate), MVPs, scoring and unbeaten
+  streaks, head-to-head per opponent and a points-per-matchday chart.
 
 ## Demo mode (no backend needed)
 
@@ -25,7 +29,21 @@ flutter pub get
 flutter run --dart-define=CALCETTO_DEMO=true
 ```
 
-## Configuring a real backend
+## Storage backends
+
+All data goes through the `DataStore` interface (`lib/providers/data_store.dart`):
+
+| Backend | When | Notes |
+|---|---|---|
+| `LocalStore` | default when no `GITHUB_TOKEN` is set | On-device (SharedPreferences), works offline, no account. Seeded with placeholder data. Move data between devices with the export/import (save icon on the home bar: JSON copied to the clipboard / pasted back). Single device = single "league". |
+| `GithubService` | `GITHUB_TOKEN` set | Optional shared backend (below) for a group that needs to see each other's squads. |
+| in-memory demo | `CALCETTO_DEMO=true` | Resets on reload. |
+
+Why: GitHub-as-database needs a token inside every client build and scheduled
+workflows to score matchdays. Local-first removes both for solo use. Sharing
+between several phones still needs a real server (or the GitHub backend).
+
+## Configuring a real backend (optional)
 
 The app stores its data as JSON files in a GitHub repository and reads and writes
 them through the GitHub Contents API. Create your own private data repository, then:

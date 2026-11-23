@@ -22,6 +22,29 @@ class PlayerAvatar extends ConsumerWidget {
     this.isSelected = false,
   });
 
+  /// First letters of the first and last name, for a broken/unreachable photo.
+  String get initials {
+    final parts = player.name.trim().split(RegExp(r'\s+'))..removeWhere((p) => p.isEmpty);
+    if (parts.isEmpty) return '?';
+    final a = parts.first[0];
+    return (parts.length > 1 ? a + parts.last[0] : a).toUpperCase();
+  }
+
+  Widget _initials() => Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: const BoxDecoration(color: kSurface2, shape: BoxShape.circle),
+    child: Text(
+      initials,
+      style: TextStyle(
+        fontFamily: 'ChakraPetch',
+        fontSize: size * 0.4,
+        color: kTextPrimary,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fallback = PixelPlayerWidget(
@@ -36,6 +59,15 @@ class PlayerAvatar extends ConsumerWidget {
     final Widget face;
     if (version == null) {
       face = fallback;
+    } else if (version.startsWith('data:')) {
+      face = Image.memory(
+        UriData.parse(version).contentAsBytes(),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => _initials(),
+      );
     } else {
       final isExternal = version.startsWith('http');
       face = Image.network(
@@ -45,7 +77,7 @@ class PlayerAvatar extends ConsumerWidget {
         height: size,
         fit: BoxFit.cover,
         gaplessPlayback: true,
-        errorBuilder: (_, _, _) => fallback,
+        errorBuilder: (_, _, _) => _initials(),
         loadingBuilder: (_, child, progress) =>
             progress == null ? child : fallback,
       );

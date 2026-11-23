@@ -48,7 +48,7 @@ LeagueData simulateLeagueData(Random rng) {
 }
 
 class AdminService {
-  final GithubService gh;
+  final DataStore gh;
   AdminService(this.gh);
 
   Future<List<String>> listUsernames() async {

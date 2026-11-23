@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
@@ -38,7 +39,7 @@ final playerImagesProvider = FutureProvider<Map<String, String>>(
 );
 
 class PlayerImageService {
-  final GithubService gh;
+  final DataStore gh;
   PlayerImageService(this.gh);
 
   Future<Map<String, String>> loadManifest() async {
@@ -53,6 +54,14 @@ class PlayerImageService {
   /// Compresses [raw] and stores it as this player's global image.
   Future<void> upload(String playerId, Uint8List raw) async {
     final processed = _compress(raw);
+    if (gh.isLocal) {
+      // On-device store: keep the (small) JPEG inline as a data URI.
+      await _setManifest(
+        playerId,
+        'data:image/jpeg;base64,${base64.encode(processed)}',
+      );
+      return;
+    }
     final sha = await gh.getSha(_imagePath(playerId));
     await gh.putFileBytes(
       _imagePath(playerId),
@@ -63,8 +72,17 @@ class PlayerImageService {
     await _setManifest(playerId, DateTime.now().toIso8601String());
   }
 
+  /// Uses an external image URL (http/https only) as this player's photo.
+  Future<void> setUrl(String playerId, String url) async {
+    final u = Uri.tryParse(url.trim());
+    if (u == null || !(u.scheme == 'http' || u.scheme == 'https') || u.host.isEmpty) {
+      throw const FormatException('Invalid image URL');
+    }
+    await _setManifest(playerId, u.toString());
+  }
+
   Future<void> remove(String playerId) async {
-    final sha = await gh.getSha(_imagePath(playerId));
+    final sha = gh.isLocal ? null : await gh.getSha(_imagePath(playerId));
     if (sha != null) {
       await gh.deleteFile(
         _imagePath(playerId),

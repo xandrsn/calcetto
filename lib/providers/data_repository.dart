@@ -17,7 +17,7 @@ final dataRepositoryProvider = Provider<DataRepository>(
 const int kActivityLogMax = 500;
 
 class DataRepository {
-  final GithubService _gh;
+  final DataStore _gh;
   DataRepository(this._gh);
 
   /// Appends a chat message to `chat.json` (merge: append to the current list).

@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'config.dart';
+import 'providers/github_provider.dart';
+import 'providers/local_store.dart';
 import 'providers/user_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
@@ -8,11 +11,22 @@ import 'services/notifications.dart';
 import 'theme/app_theme.dart';
 import 'utils/app_clock.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   initAppClock(); // resolve Europe/Madrid so all phase logic uses Spanish time
   NotificationService.init(); // Android-only daily phase reminders; fire & forget
-  runApp(const ProviderScope(child: CalcettoApp()));
+  // No token and not the demo build: run fully on-device (see README).
+  final local = (kDemoMode || kGithubToken.isNotEmpty)
+      ? null
+      : await LocalStore.open();
+  runApp(
+    ProviderScope(
+      overrides: [
+        if (local != null) githubServiceProvider.overrideWithValue(local),
+      ],
+      child: const CalcettoApp(),
+    ),
+  );
 }
 
 /// Global text scale per platform (tune here). Android renders denser than a
