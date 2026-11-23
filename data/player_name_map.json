@@ -1,0 +1,5 @@
+{
+  "_comment": "OVERRIDE map only. fetch_scores.py now auto-matches Sofascore names to data/players.json by de-accented last name, restricted to the two teams in the match (handles accents and 'F. Lastname' / nickname short-names automatically). Add an entry here ONLY for a name auto-matching gets wrong or can't resolve (e.g. an ambiguous last name shared by two team-mates). Key = exact Sofascore shortName or name; value = our player id. Run fetch_scores.py --dry-run to print any unmapped names + their team.",
+  "mappings": {},
+  "unmapped": []
+}
