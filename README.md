@@ -4,7 +4,6 @@ Calcetto is a fantasy La Liga game for a small group of friends, built with Flut
 Players draft a squad, set a weekly lineup, play power-up cards and bet on matchday
 results. Points come from real match data, scored by scheduled scripts.
 
-Try it in the browser: https://calcetto-one.vercel.app (saved on your device, no account)
 Portfolio: https://charlieandersen.vercel.app
 
 ## Features
